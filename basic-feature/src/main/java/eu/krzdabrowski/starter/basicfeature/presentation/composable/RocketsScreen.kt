@@ -1,25 +1,27 @@
 package eu.krzdabrowski.starter.basicfeature.presentation.composable
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.google.accompanist.swiperefresh.SwipeRefresh
-import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import eu.krzdabrowski.starter.basicfeature.R
 import eu.krzdabrowski.starter.basicfeature.presentation.RocketsEvent
 import eu.krzdabrowski.starter.basicfeature.presentation.RocketsEvent.OpenWebBrowserWithDetails
 import eu.krzdabrowski.starter.basicfeature.presentation.RocketsIntent
-import eu.krzdabrowski.starter.basicfeature.presentation.RocketsIntent.RefreshRockets
 import eu.krzdabrowski.starter.basicfeature.presentation.RocketsIntent.RocketClicked
 import eu.krzdabrowski.starter.basicfeature.presentation.RocketsUiState
 import eu.krzdabrowski.starter.basicfeature.presentation.RocketsViewModel
@@ -48,13 +50,25 @@ internal fun RocketsScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
-    ) {
-        // TODO: migrate from accompanist to built-in pull-to-refresh when added to Material3
-        SwipeRefresh(
-            state = rememberSwipeRefreshState(uiState.isLoading),
-            onRefresh = { onIntent(RefreshRockets) },
+    ) { paddingValues ->
+        val state = rememberPullToRefreshState()
+
+        if (state.isRefreshing) {
+            LaunchedEffect(true) {
+                onIntent(RocketsIntent.RefreshRockets)
+            }
+        }
+
+        LaunchedEffect(uiState.isLoading) {
+            if (!uiState.isLoading) {
+                state.endRefresh()
+            }
+        }
+
+        Box(
             modifier = Modifier
-                .padding(it),
+                .padding(paddingValues)
+                .nestedScroll(state.nestedScrollConnection),
         ) {
             if (uiState.rockets.isNotEmpty()) {
                 RocketsAvailableContent(
@@ -67,6 +81,12 @@ internal fun RocketsScreen(
                     uiState = uiState,
                 )
             }
+
+            PullToRefreshContainer(
+                state = state,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+            )
         }
     }
 }
